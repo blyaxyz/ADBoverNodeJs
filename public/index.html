@@ -1,0 +1,571 @@
+
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>ADB over Node.js • Toolbox</title>
+  <link rel="stylesheet" href="./common.css"/>
+  <script src="./webadb.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>ADB over Node.js</h1>
+        <p>Локальный сервер вызывает <code>adb</code>. Выберите устройство (serial), затем пользуйтесь инструментами ниже.</p>
+      </div>
+      <div id="status" class="right"></div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button id="refresh" data-action="refresh" class="primary">Обновить устройства</button>
+        <button id="getVersion" data-action="getVersion" class="ghost">Версия ADB</button>
+        <button id="pickWebUsb" data-action="pickWebUsb" class="ghost">Выбрать через WebUSB (получить serial)</button>
+        <button id="killAdb" data-action="killAdb" class="ghost">Освободить интерфейс (kill-server)</button>
+        <button id="startAdb" data-action="startAdb" class="ghost">Запустить ADB (start-server)</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label>Выбранный serial
+          <input id="serial" type="text" placeholder="серийный номер"/>
+        </label>
+      </div>
+      <div style="margin-top:10px">
+        <table>
+          <thead><tr><th>Serial</th><th>Model</th><th>State</th></tr></thead>
+          <tbody id="list"></tbody>
+        </table>
+      </div>
+      <p class="muted" style="margin-top:8px">
+        Если при выборе через WebUSB видите «Unable to claim interface», интерфейс ADB занят (системный adb/Android Studio/scrcpy).
+        Кнопка «Освободить интерфейс» временно останавливает adb на этом ПК.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>TCP/IP</h2>
+      <div class="row" style="margin-top:10px">
+        <label>Порт TCP/IP
+          <input id="port" type="number" min="1024" max="65535" value="5555"/>
+        </label>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="showIp" data-action="showIp">Показать IP</button>
+        <button id="enableTcpip" data-action="enableTcpip" class="success">Включить TCP/IP</button>
+      </div>
+      <pre id="log" class="log" style="margin-top:10px"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Push (загрузка файла на устройство)</h2>
+      <div class="row" style="margin-top:10px">
+        <label>Файл
+          <input id="pushFile" type="file"/>
+        </label>
+        <label>Путь назначения на устройстве
+          <input id="pushRemote" type="text" placeholder="/sdcard/Download/filename.bin"/>
+        </label>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="doPush" data-action="doPush" class="primary">Загрузить</button>
+      </div>
+      <pre id="pushLog" class="log" style="margin-top:10px"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Установка APK</h2>
+      <div class="row" style="margin-top:10px">
+        <label>APK-файл
+          <input id="apkFile" type="file" accept=".apk,application/vnd.android.package-archive"/>
+        </label>
+        <label><input id="apkReinstall" type="checkbox"/> Переустановить (-r)</label>
+        <label><input id="apkGrant" type="checkbox"/> Выдать runtime-разрешения (-g)</label>
+        <label><input id="apkDowngrade" type="checkbox"/> Разрешить даунгрейд (-d)</label>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="installApk" data-action="installApk" class="success">Установить</button>
+      </div>
+      <pre id="apkLog" class="log" style="margin-top:10px"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Shell-команда</h2>
+      <div class="row" style="margin-top:10px">
+        <label>Команда
+          <input id="shellCmd" type="text" placeholder="getprop ro.product.model"/>
+        </label>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="runShell" data-action="runShell">Выполнить</button>
+      </div>
+      <pre id="shellLog" class="log" style="margin-top:10px"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Logcat (поток)</h2>
+      <div class="row" style="margin-top:10px">
+        <label>Фильтр (опц.) — например: *:I
+          <input id="logcatFilter" type="text" placeholder="*:I"/>
+        </label>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="startLogcat" data-action="startLogcat" class="primary">Старт</button>
+        <button id="stopLogcat" data-action="stopLogcat" class="ghost">Стоп</button>
+      </div>
+      <pre id="logcatView" class="log" style="margin-top:10px"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Приложения</h2>
+      <div class="row" style="margin-top:10px">
+        <label>Тип списка
+          <select id="appsType">
+            <option value="user">Пользовательские</option>
+            <option value="system">Системные</option>
+            <option value="all">Все</option>
+          </select>
+        </label>
+        <label>Поиск
+          <input id="appsSearch" type="text" placeholder="фильтр по пакету"/>
+        </label>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button id="appsRefresh" data-action="appsRefresh" class="primary">Обновить список</button>
+      </div>
+      <div style="margin-top:10px; overflow:auto; max-height:360px">
+        <table>
+          <thead><tr><th>Пакет</th><th>Действия</th></tr></thead>
+          <tbody id="appsList"></tbody>
+        </table>
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <div>
+          <h3>Детали</h3>
+          <label>Пакет
+            <input id="pkg" type="text" placeholder="com.example.app"/>
+          </label>
+          <div class="btn-row" style="margin-top:8px">
+            <button id="pkgDetails" data-action="pkgDetails">Обновить детали</button>
+            <button id="pkgEnable" data-action="pkgEnable" class="success">Включить</button>
+            <button id="pkgDisable" data-action="pkgDisable">Заморозить (disable-user)</button>
+            <button id="pkgUninstall" data-action="pkgUninstall" class="danger">Удалить</button>
+          </div>
+          <pre id="pkgInfo" class="log" style="margin-top:10px"></pre>
+        </div>
+        <div>
+          <h3>Доступы (Runtime permissions)</h3>
+          <label>Разрешение
+            <input id="perm" type="text" placeholder="android.permission.CAMERA"/>
+          </label>
+          <div class="btn-row" style="margin-top:8px">
+            <button id="permGrant" data-action="permGrant" class="success">Выдать</button>
+            <button id="permRevoke" data-action="permRevoke" class="ghost">Забрать</button>
+          </div>
+          <p class="muted" style="margin-top:8px">Работает для опасных runtime-разрешений, которые запрашивает приложение. Системные/подписьные права не выдаются обычному приложению.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+const log = (...a)=>{ $('log').textContent += a.join(' ') + '\n'; $('log').scrollTop = $('log').scrollHeight; };
+const pushLog = (...a)=>{ $('pushLog').textContent += a.join(' ') + '\n'; $('pushLog').scrollTop = $('pushLog').scrollHeight; };
+const apkLog = (...a)=>{ $('apkLog').textContent += a.join(' ') + '\n'; $('apkLog').scrollTop = $('apkLog').scrollHeight; };
+const shellLog = (...a)=>{ $('shellLog').textContent += a.join(' ') + '\n'; $('shellLog').scrollTop = $('shellLog').scrollHeight; };
+const logcatView = (...a)=>{ $('logcatView').textContent += a.join(' ') + '\n'; $('logcatView').scrollTop = $('logcatView').scrollHeight; };
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const ct = r.headers.get('content-type') || '';
+  if (ct.includes('application/json')) return await r.json();
+  return await r.text();
+}
+
+async function refresh() {
+  $('list').innerHTML = '<tr><td colspan="3">Загрузка...</td></tr>';
+  try {
+    const data = await api('/api/devices');
+    const rows = (data.devices||[]).map(d => {
+      return `<tr>
+        <td><a href="#" data-serial="${d.serial}">${d.serial}</a></td>
+        <td>${d.model||''}</td>
+        <td>${d.state||''}</td>
+      </tr>`;
+    }).join('');
+    $('list').innerHTML = rows || '<tr><td colspan="3">Устройств не найдено</td></tr>';
+    $('list').querySelectorAll('a[data-serial]').forEach(a => {
+      a.addEventListener('click', (ev) => { ev.preventDefault(); $('serial').value = a.dataset.serial; });
+    });
+  } catch(e) {
+    $('list').innerHTML = '<tr><td colspan="3">Ошибка /api/devices</td></tr>';
+    console.error(e);
+  }
+}
+
+$('refresh').onclick = refresh;
+$('getVersion').onclick = async () => {
+  try { const r = await api('/api/version'); $('status').innerHTML = '<span class="badge">' + r.version + '</span>'; }
+  catch(e) { $('status').innerHTML = '<span class="badge">ADB не найден</span>'; }
+};
+
+$('pickWebUsb').onclick = async () => {
+  try {
+    const serial = await WebAdbHelper.pickSerial({
+      killServerUrl: '/api/adb/kill-server',
+      startServerUrl: '/api/adb/start-server'
+    });
+    $('serial').value = serial;
+  } catch(e) { alert('Ошибка WebUSB: ' + (e.message || e)); }
+};
+$('killAdb').onclick = async () => { try { await fetch('/api/adb/kill-server', { method:'POST' }); } catch(_){} };
+$('startAdb').onclick = async () => { try { await fetch('/api/adb/start-server', { method:'POST' }); } catch(_){} };
+
+$('showIp').onclick = async () => {
+  const serial = $('serial').value.trim();
+  if (!serial) return alert('Выберите устройство');
+  try {
+    const r = await api('/api/ip?serial=' + encodeURIComponent(serial));
+    log('IP:', (r.ipv4||[]).join(', ') || 'не найден');
+  } catch(e) { log('Ошибка IP:', e.message); }
+};
+$('enableTcpip').onclick = async () => {
+  const serial = $('serial').value.trim();
+  const port = parseInt($('port').value, 10)||5555;
+  if (!serial) return alert('Выберите устройство');
+  try {
+    const r = await fetch('/api/tcpip', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ serial, port }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'fail');
+    log('TCP/IP:', j.stdout.trim());
+    alert('Теперь можно: adb connect <ip>:' + port);
+  } catch(e) { log('Ошибка TCP/IP:', e.message); }
+};
+$('doPush').onclick = async () => {
+  const serial = $('serial').value.trim();
+  const file = $('pushFile').files[0];
+  const remote = $('pushRemote').value.trim();
+  if (!serial) return alert('Выберите устройство');
+  if (!file) return alert('Выберите файл');
+  if (!remote) return alert('Укажите путь назначения');
+  try {
+    const fd = new FormData();
+    fd.append('serial', serial);
+    fd.append('remote', remote);
+    fd.append('file', file, file.name);
+    const r = await fetch('/api/push', { method: 'POST', body: fd });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'push failed');
+    pushLog(j.stdout.trim());
+  } catch(e) { pushLog('Ошибка:', e.message); }
+};
+$('installApk').onclick = async () => {
+  const serial = $('serial').value.trim();
+  const file = $('apkFile').files[0];
+  if (!serial) return alert('Выберите устройство');
+  if (!file) return alert('Выберите APK');
+  try {
+    const fd = new FormData();
+    fd.append('serial', serial);
+    fd.append('apk', file, file.name);
+    fd.append('reinstall', String($('apkReinstall').checked));
+    fd.append('grant', String($('apkGrant').checked));
+    fd.append('downgrade', String($('apkDowngrade').checked));
+    const r = await fetch('/api/install', { method: 'POST', body: fd });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'install failed');
+    apkLog(j.stdout.trim());
+  } catch(e) { apkLog('Ошибка:', e.message); }
+};
+$('runShell').onclick = async () => {
+  const serial = $('serial').value.trim();
+  const cmd = $('shellCmd').value.trim();
+  if (!serial) return alert('Выберите устройство');
+  if (!cmd) return alert('Введите команду');
+  try {
+    const r = await fetch('/api/shell', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ serial, cmd }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'shell failed');
+    shellLog(j.stdout || '');
+    if (j.stderr) shellLog('[stderr]', j.stderr);
+  } catch(e) { shellLog('Ошибка:', e.message); }
+};
+let es = null;
+$('startLogcat').onclick = async () => {
+  const serial = $('serial').value.trim();
+  const filter = $('logcatFilter').value.trim();
+  if (!serial) return alert('Выберите устройство');
+  if (es) es.close();
+  $('logcatView').textContent = '';
+  es = new EventSource('/api/logcat?serial=' + encodeURIComponent(serial) + (filter ? '&filter=' + encodeURIComponent(filter) : ''));
+  es.onmessage = (ev) => { logcatView(ev.data); };
+  es.onerror = () => { logcatView('[SSE] Ошибка подключения'); };
+};
+$('stopLogcat').onclick = () => { if (es) { es.close(); es = null; } };
+
+// ----- Apps management -----
+const appsListEl = document.getElementById('appsList');
+const appsTypeEl = document.getElementById('appsType');
+const appsSearchEl = document.getElementById('appsSearch');
+
+
+async function loadApps() {
+  const serial = $('serial').value.trim();
+  if (!serial) { alert('Выберите устройство'); return; }
+  appsListEl.innerHTML = '<tr><td colspan="2">Загрузка...</td></tr>';
+  try {
+    const type = appsTypeEl.value;
+    const data = await api('/api/packages?serial=' + encodeURIComponent(serial) + '&type=' + encodeURIComponent(type));
+    const q = appsSearchEl.value.trim().toLowerCase();
+    const arr = (data.packages||[]).filter(p => !q || (p.package||'').toLowerCase().includes(q));
+
+    // Build rows via DOM to avoid template literal issues
+    const tbody = document.createElement('tbody');
+    if (!arr.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 2;
+      td.textContent = 'Пусто';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+    } else {
+      for (const pkg of arr) {
+        const tr = document.createElement('tr');
+
+        const tdPkg = document.createElement('td');
+        tdPkg.textContent = pkg.package || '';
+        tr.appendChild(tdPkg);
+
+        const tdAct = document.createElement('td');
+        const mkBtn = (text, cls, handler) => {
+          const b = document.createElement('button');
+          b.textContent = text;
+          if (cls) b.className = cls;
+          b.addEventListener('click', (e) => { e.preventDefault(); handler(pkg.package); });
+          return b;
+        };
+        tdAct.appendChild(mkBtn('Детали', '', (p)=>{ $('pkg').value=p; pkgDetails(); }));
+        tdAct.appendChild(mkBtn('Заморозить', '', (p)=> pkgDisable(p)));
+        tdAct.appendChild(mkBtn('Включить', '', (p)=> pkgEnable(p)));
+        tdAct.appendChild(mkBtn('Удалить', 'danger', (p)=> pkgUninstall(p)));
+        tr.appendChild(tdAct);
+
+        tbody.appendChild(tr);
+      }
+    }
+    // Replace current tbody
+    const current = appsListEl;
+    current.innerHTML = '';
+    current.appendChild(tbody);
+  } catch(e) {
+    appsListEl.innerHTML = '<tr><td colspan="2">Ошибка загрузки списка</td></tr>';
+    console.error('[apps] load error', e);
+  }
+}
+
+document.getElementById('appsRefresh').onclick = loadApps;
+appsSearchEl.addEventListener('input', () => loadApps());
+
+async function pkgDetails() {
+  const serial = $('serial').value.trim();
+  const pkg = $('pkg').value.trim();
+  if (!serial) return alert('Выберите устройство');
+  if (!pkg) return alert('Укажите пакет');
+  try {
+    const r = await api('/api/package?serial=' + encodeURIComponent(serial) + '&pkg=' + encodeURIComponent(pkg));
+    const d = r.details || {};
+    $('pkgInfo').textContent =
+      'package: ' + r.pkg + '\n' +
+      'versionName: ' + (d.versionName||'') + '\n' +
+      'versionCode: ' + (d.versionCode||'') + '\n' +
+      'enabled: ' + (d.enabled===null?'unknown':d.enabled) + '\n' +
+      'appId/userId: ' + (d.appId||'') + '/' + (d.userId||'') + '\n' +
+      '\nrequested permissions:\n- ' + (d.requested||[]).join('\n- ') + '\n' +
+      '\ngranted:\n- ' + (d.granted||[]).join('\n- ');
+  } catch(e) {
+    $('pkgInfo').textContent = 'Ошибка: ' + e.message;
+  }
+}
+document.getElementById('pkgDetails').onclick = pkgDetails;
+
+async function pkgDisable(p) {
+  const serial = $('serial').value.trim();
+  const pkg = p || $('pkg').value.trim();
+  if (!serial) return alert('Выберите устройство');
+  if (!pkg) return alert('Укажите пакет');
+  if (!confirm('Заморозить (disable-user) ' + pkg + '?')) return;
+  try {
+    const r = await fetch('/api/package/disable', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ serial, pkg }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'disable failed');
+    await pkgDetails();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+document.getElementById('pkgDisable').onclick = () => pkgDisable();
+
+async function pkgEnable(p) {
+  const serial = $('serial').value.trim();
+  const pkg = p || $('pkg').value.trim();
+  if (!serial) return alert('Выберите устройство');
+  if (!pkg) return alert('Укажите пакет');
+  try {
+    const r = await fetch('/api/package/enable', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ serial, pkg }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'enable failed');
+    await pkgDetails();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+document.getElementById('pkgEnable').onclick = () => pkgEnable();
+
+async function pkgUninstall(p) {
+  const serial = $('serial').value.trim();
+  const pkg = p || $('pkg').value.trim();
+  if (!serial) return alert('Выберите устройство');
+  if (!pkg) return alert('Укажите пакет');
+  if (!confirm('Удалить ' + pkg + ' ?')) return;
+  try {
+    const r = await fetch('/api/package/uninstall', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ serial, pkg, user0only: true }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'uninstall failed');
+    await loadApps();
+    $('pkgInfo').textContent = j.stdout || 'OK';
+  } catch(e) { alert('Ошибка: ' + e.message); }
+}
+document.getElementById('pkgUninstall').onclick = () => pkgUninstall();
+
+document.getElementById('permGrant').onclick = async () => {
+  const serial = $('serial').value.trim();
+  const pkg = $('pkg').value.trim();
+  const permission = $('perm').value.trim();
+  if (!serial || !pkg || !permission) return alert('serial/pkg/permission');
+  try {
+    const r = await fetch('/api/package/grant', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ serial, pkg, permission }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'grant failed');
+    await pkgDetails();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+};
+document.getElementById('permRevoke').onclick = async () => {
+  const serial = $('serial').value.trim();
+  const pkg = $('pkg').value.trim();
+  const permission = $('perm').value.trim();
+  if (!serial || !pkg || !permission) return alert('serial/pkg/permission');
+  try {
+    const r = await fetch('/api/package/revoke', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ serial, pkg, permission }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'revoke failed');
+    await pkgDetails();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+};
+
+
+// Global error logging
+window.addEventListener('error', e => { console.error('[GlobalError]', e.message || e.error); });
+window.addEventListener('unhandledrejection', e => { console.error('[UnhandledRejection]', e.reason); });
+
+function attachHandlers() {
+  // Direct bindings (fallback if needed)
+  const map = {
+    refresh, getVersion: ()=>document.getElementById('getVersion').click(), pickWebUsb: ()=>document.getElementById('pickWebUsb').click(),
+    killAdb: ()=>document.getElementById('killAdb').click(), startAdb: ()=>document.getElementById('startAdb').click(),
+    showIp: ()=>document.getElementById('showIp').click(), enableTcpip: ()=>document.getElementById('enableTcpip').click(),
+    doPush: ()=>document.getElementById('doPush').click(), installApk: ()=>document.getElementById('installApk').click(),
+    runShell: ()=>document.getElementById('runShell').click(), startLogcat: ()=>document.getElementById('startLogcat').click(),
+    stopLogcat: ()=>document.getElementById('stopLogcat').click(), appsRefresh: ()=>document.getElementById('appsRefresh').click(),
+    pkgDetails: ()=>document.getElementById('pkgDetails').click(), pkgEnable: ()=>document.getElementById('pkgEnable').click(),
+    pkgDisable: ()=>document.getElementById('pkgDisable').click(), pkgUninstall: ()=>document.getElementById('pkgUninstall').click(),
+    permGrant: ()=>document.getElementById('permGrant').click(), permRevoke: ()=>document.getElementById('permRevoke').click(),
+  };
+  // Delegation
+  document.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('button[data-action]');
+    if (!btn) return;
+    ev.preventDefault();
+    const act = btn.dataset.action;
+    try {
+      switch (act) {
+
+case 'toggleCheats': {
+  const el = document.getElementById('cheatList');
+  if (el) el.classList.toggle('hidden');
+  return;
+}
+
+
+
+case 'pkgDownload': {
+  const serial = $('serial').value.trim();
+  const pkg = $('pkg').value.trim();
+  if (!serial) { alert('Выберите устройство'); return; }
+  if (!pkg) { alert('Укажите пакет'); return; }
+  const all = document.getElementById('apkAllSplits').checked;
+  const url = '/api/package/apk?serial=' + encodeURIComponent(serial) + '&pkg=' + encodeURIComponent(pkg) + '&type=' + (all ? 'all' : 'base');
+  const a = document.createElement('a');
+  a.href = url; a.download = all ? (pkg + '.apks.zip') : (pkg + '.apk');
+  document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(), 500);
+  return;
+}
+
+
+        case 'refresh': return refresh();
+        case 'getVersion': return document.getElementById('getVersion').dispatchEvent(new Event('click'));
+        case 'pickWebUsb': return document.getElementById('pickWebUsb').dispatchEvent(new Event('click'));
+        case 'killAdb': return document.getElementById('killAdb').dispatchEvent(new Event('click'));
+        case 'startAdb': return document.getElementById('startAdb').dispatchEvent(new Event('click'));
+        case 'showIp': return document.getElementById('showIp').dispatchEvent(new Event('click'));
+        case 'enableTcpip': return document.getElementById('enableTcpip').dispatchEvent(new Event('click'));
+        case 'doPush': return document.getElementById('doPush').dispatchEvent(new Event('click'));
+        case 'installApk': return document.getElementById('installApk').dispatchEvent(new Event('click'));
+        case 'runShell': return document.getElementById('runShell').dispatchEvent(new Event('click'));
+        case 'startLogcat': return document.getElementById('startLogcat').dispatchEvent(new Event('click'));
+        case 'stopLogcat': return document.getElementById('stopLogcat').dispatchEvent(new Event('click'));
+        case 'appsRefresh': return document.getElementById('appsRefresh').dispatchEvent(new Event('click'));
+        case 'pkgDetails': return document.getElementById('pkgDetails').dispatchEvent(new Event('click'));
+        case 'pkgEnable': return document.getElementById('pkgEnable').dispatchEvent(new Event('click'));
+        case 'pkgDisable': return document.getElementById('pkgDisable').dispatchEvent(new Event('click'));
+        case 'pkgUninstall': return document.getElementById('pkgUninstall').dispatchEvent(new Event('click'));
+        case 'permGrant': return document.getElementById('permGrant').dispatchEvent(new Event('click'));
+        case 'permRevoke': return document.getElementById('permRevoke').dispatchEvent(new Event('click'));
+      }
+    } catch (e) {
+      console.error('[click handler error]', e);
+    }
+  });
+}
+
+// Ensure handlers attached after DOM
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    attachHandlers();
+    // Initial actions
+    refresh();
+    document.getElementById('getVersion').click();
+  } catch (e) {
+    console.error('[DOMContentLoaded error]', e);
+  }
+});
+
+document.getElementById('permGrant').onclick = async () => {
+  const serial = $('serial').value.trim();
+  const pkg = $('pkg').value.trim();
+  const permission = $('perm').value.trim();
+  if (!serial || !pkg || !permission) return alert('serial/pkg/permission');
+  try {
+    const r = await fetch('/api/package/grant', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ serial, pkg, permission }) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'grant failed');
+    await pkgDetails();
+  } catch(e) { alert('Ошибка: ' + e.message); }
+};
+
+
+
+// init
+refresh();
+$('getVersion').click();
+</script>
+</body>
+</html>

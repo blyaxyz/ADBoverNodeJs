@@ -1,0 +1,174 @@
+:root {
+    color-scheme: light dark;
+    --bg: #0b0c10;
+    --fg: #e8e8e8;
+    --muted: #a0a4ab;
+    --card: #111317;
+    --accent: #4f7cff;
+    --accent-2: #1db954;
+    --danger: #e53935;
+    --border: #23262d;
+    --radius: 14px;
+}
+
+* {
+    box-sizing: border-box
+}
+
+body {
+    margin: 0;
+    padding: 24px;
+    font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial;
+    color: var(--fg);
+    background: linear-gradient(180deg, #0b0c10 0%, #0f1216 100%)
+}
+
+h1,
+h2,
+h3 {
+    margin: 0 0 12px 0;
+    font-weight: 700
+}
+
+p {
+    margin: 0 0 10px 0;
+    color: var(--muted)
+}
+
+.container {
+    max-width: 1140px;
+    margin: 0 auto;
+    display: grid;
+    gap: 16px
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between
+}
+
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px
+}
+
+.row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px
+}
+
+.btn-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap
+}
+
+.badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid var(--border)
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: #0d0f14;
+    color: var(--fg);
+    outline: none
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical
+}
+
+button {
+    border: 0;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-weight: 600;
+    background: #1a1d24;
+    color: var(--fg);
+    cursor: pointer
+}
+
+button.primary {
+    background: var(--accent);
+    color: #fff
+}
+
+button.success {
+    background: var(--accent-2);
+    color: #001f0f
+}
+
+button.ghost {
+    background: #161a20
+}
+
+button.danger {
+    background: var(--danger);
+    color: #fff
+}
+
+.log {
+    background: #060709;
+    border: 1px solid #1a1f27;
+    border-radius: 12px;
+    padding: 12px;
+    min-height: 120px;
+    max-height: 360px;
+    overflow: auto;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.4
+}
+
+.right {
+    text-align: right
+}
+
+.hidden {
+    display: none !important
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse
+}
+
+td,
+th {
+    padding: 8px;
+    border-bottom: 1px solid #1f2430;
+    text-align: left;
+    font-size: 14px
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #ffffff33;
+    border-top-color: #fff;
+    display: inline-block;
+    animation: spin .8s linear infinite;
+    vertical-align: middle;
+    margin-left: 6px
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg)
+    }
+}
